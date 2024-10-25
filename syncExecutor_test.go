@@ -141,3 +141,57 @@ func TestFailTask(t *testing.T) {
 		t.Fatalf("Expected task ID %d to not be in completed tasks", task.TaskId)
 	}
 }
+
+func TestRetryTask(t *testing.T) {
+	executor := &SyncTaskExecutor{
+		taskQueue:        []Task{},
+		completedTasks:   make(map[int]struct{}),
+		failureThreshold: 0, //must success
+		retryCount:       3,
+	}
+
+	task := Task{TaskId: 1, RetryCount: 2} // Example task with RetryCount less than failureThreshold
+
+	success, err := executor.retryTask(task)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if !success {
+		t.Fatalf("Expected success to be true, got false")
+	}
+}
+
+func TestExecuteTask_RetryScenario(t *testing.T) {
+	executor := &SyncTaskExecutor{
+		failureThreshold: 101, //must failed
+		taskQueue:        []Task{},
+		completedTasks:   make(map[int]struct{}),
+		retryCount:       3,
+	}
+
+	resultChan := make(chan bool)
+	task := Task{
+		TaskId:     1,
+		RetryCount: 2,
+		ResultChan: resultChan,
+	}
+
+	// Start a goroutine to receive the completion signal
+	go func() {
+		result := <-resultChan
+		if result {
+			t.Log("Task completed successfully.")
+		} else {
+			t.Log("Task failed.")
+		}
+	}()
+
+	success, err := executor.executeTask(task)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if success {
+		t.Fatalf("Expected task to fai")
+	}
+}

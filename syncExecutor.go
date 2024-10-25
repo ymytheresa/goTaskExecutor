@@ -78,11 +78,9 @@ func (executor *SyncTaskExecutor) executeTask(task Task) (bool, error) {
 	// Determine if the task execution is successful based on the threshold
 	if randomValue > float64(executor.failureThreshold) {
 		executor.completedTasks[task.TaskId] = struct{}{}
-		log.Printf("Task ID: %d completed successfully.\n", task.TaskId)
 		executor.completeTask(task)
 		return true, nil
 	} else {
-		log.Printf("Task ID: %d failed to execute.\n", task.TaskId)
 		task.RetryCount++
 		if task.RetryCount <= executor.failureThreshold {
 			executor.retryTask(task)
@@ -105,7 +103,8 @@ func (executor *SyncTaskExecutor) completeTask(task Task) (bool, error) {
 }
 
 func (executor *SyncTaskExecutor) retryTask(task Task) (bool, error) {
-	return executor.scheduleTask(task)
+	log.Printf("Task ID: %d retried.\n", task.TaskId)
+	return executor.executeTask(task)
 }
 
 func (executor *SyncTaskExecutor) failTask(task Task) (bool, error) {
