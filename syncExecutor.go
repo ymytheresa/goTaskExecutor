@@ -86,7 +86,7 @@ func (executor *SyncTaskExecutor) executeTask(task Task) (bool, error) {
 		return true, nil
 	} else {
 		task.RetryCount++
-		if task.RetryCount <= executor.failureThreshold {
+		if task.RetryCount <= executor.retryCount {
 			executor.retryTask(task)
 		} else {
 			executor.failTask(task)
