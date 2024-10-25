@@ -30,11 +30,7 @@ func TestScheduleTask(t *testing.T) {
 	}
 
 	task := Task{TaskId: 1}
-	success, err := executor.scheduleTask(task)
-
-	if !success || err != nil {
-		t.Errorf("Expected success to be true and err to be nil, got success: %v, err: %v", success, err)
-	}
+	executor.scheduleTask(task)
 
 	if len(executor.taskQueue) != 1 {
 		t.Errorf("Expected taskQueue length to be 1, got %d", len(executor.taskQueue))
@@ -45,46 +41,12 @@ func TestScheduleTask(t *testing.T) {
 	}
 }
 
-func TestPopTask(t *testing.T) {
-	executor := &SyncTaskExecutor{
-		taskQueue: []Task{
-			{TaskId: 1},
-			{TaskId: 2},
-		},
-	}
-
-	task, err := executor.popTask()
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-	if task.TaskId != 1 {
-		t.Fatalf("Expected TaskId 1, got %d", task.TaskId)
-	}
-
-	task, err = executor.popTask()
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-	if task.TaskId != 2 {
-		t.Fatalf("Expected TaskId 2, got %d", task.TaskId)
-	}
-
-	_, err = executor.popTask()
-	if err == nil {
-		t.Fatal("Expected error, got none")
-	}
-	expectedError := "no tasks in queue"
-	if err.Error() != expectedError {
-		t.Fatalf("Expected '%s' error, got %v", expectedError, err)
-	}
-}
-
 func TestCompleteTask(t *testing.T) {
 	executor := &SyncTaskExecutor{
 		completedTasks: make(map[int]struct{}),
 	}
 
-	resultChan := make(chan bool)
+	resultChan := make(chan int)
 	task := Task{
 		TaskId:     1,
 		ResultChan: resultChan,
@@ -92,7 +54,7 @@ func TestCompleteTask(t *testing.T) {
 
 	go func() {
 		result := <-resultChan
-		if !result {
+		if result != 1 {
 			t.Fatal("Expected result to be true")
 		}
 	}()
@@ -116,7 +78,7 @@ func TestFailTask(t *testing.T) {
 		completedTasks: make(map[int]struct{}),
 	}
 
-	resultChan := make(chan bool)
+	resultChan := make(chan int)
 	task := Task{
 		TaskId:     1,
 		ResultChan: resultChan,
@@ -124,7 +86,7 @@ func TestFailTask(t *testing.T) {
 
 	go func() {
 		result := <-resultChan
-		if result {
+		if result != 2 {
 			t.Fatal("Expected result to be false")
 		}
 	}()
@@ -169,7 +131,7 @@ func TestExecuteTask_RetryScenario(t *testing.T) {
 		retryCount:       3,
 	}
 
-	resultChan := make(chan bool)
+	resultChan := make(chan int)
 	task := Task{
 		TaskId:     1,
 		RetryCount: 2,
@@ -179,7 +141,7 @@ func TestExecuteTask_RetryScenario(t *testing.T) {
 	// Start a goroutine to receive the completion signal
 	go func() {
 		result := <-resultChan
-		if result {
+		if result != 1 {
 			t.Log("Task completed successfully.")
 		} else {
 			t.Log("Task failed.")

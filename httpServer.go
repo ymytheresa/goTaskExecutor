@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync"
 )
 
 func startHttpServer() {
@@ -24,7 +25,14 @@ func startHttpServer() {
 	}
 	var executor TaskExecutor
 	if serverConfig.Mode == "async" {
-		return
+		executor = &AsyncTaskExecutor{
+			taskQueue:        make(chan Task, 100),
+			completedTasks:   make(map[int]struct{}),
+			failureThreshold: serverConfig.FailureThreshold,
+			retryCount:       3,
+			wg:               sync.WaitGroup{},
+			mu:               sync.RWMutex{},
+		}
 	} else if serverConfig.Mode == "sync" {
 		executor = &SyncTaskExecutor{
 			taskQueue:        make([]Task, 0),
@@ -92,8 +100,7 @@ func taskHandler(w http.ResponseWriter, r *http.Request, server Server) {
 	task := Task{
 		TaskId:     taskID,
 		RetryCount: 0,
-		Completed:  false,
-		ResultChan: make(chan bool),
+		ResultChan: make(chan int),
 	}
 
 	if _, err := server.TaskExecutor.SubmitTask(task); err != nil {
@@ -104,11 +111,15 @@ func taskHandler(w http.ResponseWriter, r *http.Request, server Server) {
 	// Wait for task completion or failure
 	result := <-task.ResultChan
 
-	if result {
+	switch result {
+	case 1: // Assuming result is a boolean indicating success
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, "Task %d completed successfully\n", taskID)
-	} else {
+	case 2: // Assuming result is false for failure
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Task %d failed\n", taskID)
+	default:
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Task %d returned an unknown result\n", taskID)
 	}
 }

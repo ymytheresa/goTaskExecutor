@@ -36,10 +36,10 @@ func (executor *SyncTaskExecutor) SubmitTask(task Task) (bool, error) {
 	return true, nil
 }
 
-func (executor *SyncTaskExecutor) scheduleTask(task Task) (bool, error) {
+func (executor *SyncTaskExecutor) scheduleTask(task Task) {
 	log.Printf("ScheduleTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
 	executor.taskQueue = append(executor.taskQueue, task)
-	return true, nil
+	return
 }
 
 func (executor *SyncTaskExecutor) processTasks() {
@@ -51,11 +51,8 @@ func (executor *SyncTaskExecutor) processTasks() {
 			return
 		default:
 			if len(executor.taskQueue) > 0 {
-				task, err := executor.popTask()
-				if err != nil {
-					log.Println("Error popping task:", err)
-					continue
-				}
+				task := executor.taskQueue[0]
+				executor.taskQueue = executor.taskQueue[1:]
 				executor.executeTask(task)
 			} else {
 				// No tasks available, sleep briefly before checking again
@@ -65,23 +62,14 @@ func (executor *SyncTaskExecutor) processTasks() {
 	}
 }
 
-func (executor *SyncTaskExecutor) popTask() (Task, error) {
-	log.Println("PopTask triggered at", time.Now().Format(time.RFC3339))
-	if len(executor.taskQueue) == 0 {
-		return Task{}, errors.New("no tasks in queue")
-	}
-	task := executor.taskQueue[0]
-	executor.taskQueue = executor.taskQueue[1:]
-	return task, nil
-}
-
 func (executor *SyncTaskExecutor) executeTask(task Task) (bool, error) {
+	log.Printf("ExecuteTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	randomValue := r.Float64() * 100
 
 	// Determine if the task execution is successful based on the threshold
 	if randomValue > float64(executor.failureThreshold) {
-		executor.completedTasks[task.TaskId] = struct{}{}
+		time.Sleep(1 * time.Second)
 		executor.completeTask(task)
 		return true, nil
 	} else {
@@ -98,11 +86,9 @@ func (executor *SyncTaskExecutor) executeTask(task Task) (bool, error) {
 func (executor *SyncTaskExecutor) completeTask(task Task) (bool, error) {
 	log.Printf("CompleteTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
 	executor.completedTasks[task.TaskId] = struct{}{}
-	log.Printf("Task ID: %d completed.\n", task.TaskId)
 
 	if task.ResultChan != nil {
-		task.Completed = true
-		task.ResultChan <- true
+		task.ResultChan <- 1
 	}
 	return true, nil
 }
@@ -116,8 +102,7 @@ func (executor *SyncTaskExecutor) failTask(task Task) (bool, error) {
 	log.Printf("Task ID: %d failed.\n", task.TaskId)
 
 	if task.ResultChan != nil {
-		task.Completed = false
-		task.ResultChan <- false
+		task.ResultChan <- 2
 	}
 	return true, nil
 }

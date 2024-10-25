@@ -1,64 +1,111 @@
 package main
 
 import (
+	"errors"
 	"log"
+	"math/rand"
 	"sync"
 	"time"
 )
 
 type AsyncTaskExecutor struct {
-	WaitGroup      *sync.WaitGroup
-	TaskChan       chan Task
-	CompletedTasks map[int]struct{}
-	Mu             *sync.RWMutex
+	taskQueue        chan Task
+	completedTasks   map[int]struct{} //will be accessed by multiple goroutines, RWMutex is used to synchronize access
+	failureThreshold int
+	retryCount       int
+	wg               sync.WaitGroup
+	mu               sync.RWMutex
 }
 
 func (executor *AsyncTaskExecutor) Start(server Server) (bool, error) {
-	log.Println("Starting task execution...")
+	executor.failureThreshold = server.Config.FailureThreshold
+	executor.completedTasks = make(map[int]struct{})
+	// TODO: Read completed tasks from DB
 
-	go func() {
-		for task := range executor.TaskChan {
-			log.Printf("Executing task ID: %d\n", task.TaskId)
-			time.Sleep(1 * time.Second) // Simulate work
-			log.Printf("Task ID: %d completed.\n", task.TaskId)
-			executor.CompletedTasks[task.TaskId] = struct{}{}
-		}
-	}()
+	go executor.processTasks()
 
-	log.Println("Task execution started.")
 	return true, nil
 }
 
 func (executor *AsyncTaskExecutor) SubmitTask(task Task) (bool, error) {
-	executor.TaskChan <- task
-	log.Printf("Task ID: %d submitted.\n", task.TaskId)
+	log.Printf("SubmitTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
+
+	executor.mu.RLock()         // Acquire read lock
+	defer executor.mu.RUnlock() // Ensure the lock is released
+
+	if _, ok := executor.completedTasks[task.TaskId]; ok {
+		log.Printf("Task ID: %d already completed.\n", task.TaskId)
+		return false, errors.New("task already completed")
+	}
+	go executor.scheduleTask(task)
 	return true, nil
 }
 
-func (executor *AsyncTaskExecutor) ScheduleTask(task Task) (bool, error) {
-	executor.TaskChan <- task
-	log.Printf("Task ID: %d scheduled.\n", task.TaskId)
+func (executor *AsyncTaskExecutor) scheduleTask(task Task) {
+	log.Printf("ScheduleTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
+	executor.taskQueue <- task
+	//TODO: full queue, return 503
+	return
+}
+
+func (executor *AsyncTaskExecutor) processTasks() {
+	for {
+		var task Task
+		select {
+		case task = <-executor.taskQueue:
+			log.Println("ProcessTasks triggered at", time.Now().Format(time.RFC3339))
+			go executor.executeTask(task)
+		default:
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+}
+
+func (executor *AsyncTaskExecutor) executeTask(task Task) (bool, error) {
+	log.Printf("ExecuteTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	randomValue := r.Float64() * 100
+
+	// Determine if the task execution is successful based on the threshold
+	if randomValue > float64(executor.failureThreshold) {
+		go func() {
+			time.Sleep(10 * time.Second)
+			executor.completeTask(task)
+		}()
+		return true, nil
+	} else {
+		task.RetryCount++
+		if task.RetryCount <= executor.retryCount {
+			executor.retryTask(task)
+		} else {
+			executor.failTask(task)
+		}
+		return false, nil
+	}
+}
+
+func (executor *AsyncTaskExecutor) completeTask(task Task) (bool, error) {
+	executor.mu.Lock()         // Acquire write lock
+	defer executor.mu.Unlock() // Ensure the lock is released
+	executor.completedTasks[task.TaskId] = struct{}{}
+	log.Printf("CompleteTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
+
+	if task.ResultChan != nil {
+		task.ResultChan <- 1
+	}
 	return true, nil
 }
 
-func (executor *AsyncTaskExecutor) ExecuteTask(task Task) (bool, error) {
-	executor.CompletedTasks[task.TaskId] = struct{}{}
-	log.Printf("Task ID: %d completed.\n", task.TaskId)
-	return true, nil
-}
-
-func (executor *AsyncTaskExecutor) CompleteTask(task Task) (bool, error) {
-	executor.CompletedTasks[task.TaskId] = struct{}{}
-	log.Printf("Task ID: %d completed.\n", task.TaskId)
-	return true, nil
-}
-
-func (executor *AsyncTaskExecutor) RetryTask(task Task) (bool, error) {
+func (executor *AsyncTaskExecutor) retryTask(task Task) (bool, error) {
 	log.Printf("Task ID: %d retried.\n", task.TaskId)
-	return true, nil
+	return executor.executeTask(task)
 }
 
-func (executor *AsyncTaskExecutor) FailTask(task Task) (bool, error) {
+func (executor *AsyncTaskExecutor) failTask(task Task) (bool, error) {
 	log.Printf("Task ID: %d failed.\n", task.TaskId)
+
+	if task.ResultChan != nil {
+		task.ResultChan <- 2
+	}
 	return true, nil
 }

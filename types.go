@@ -13,16 +13,14 @@ type Server struct {
 type Task struct {
 	TaskId     int
 	RetryCount int
-	Completed  bool
-	ResultChan chan bool
+	ResultChan chan int // 1: success, 2: fail, 3: onhold
 }
 
 type TaskExecutor interface {
 	Start(server Server) (bool, error)
 	SubmitTask(task Task) (bool, error)
-	scheduleTask(task Task) (bool, error)
+	scheduleTask(task Task)
 	processTasks()
-	popTask() (Task, error)
 	executeTask(task Task) (bool, error)
 	completeTask(task Task) (bool, error)
 	retryTask(task Task) (bool, error)
