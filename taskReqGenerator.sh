@@ -6,7 +6,9 @@ for i in {1..100}
 do
   request_id="$i"
 
-  echo "Sending request: {\"request_id\": \"$request_id\"}"
+  # Add timestamp
+  timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+  echo "Sending request: {\"request_id\": \"$request_id\"} at $timestamp"
 
   curl -X POST "$url" \
     -H "Content-Type: application/json" \

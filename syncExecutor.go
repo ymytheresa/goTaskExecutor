@@ -27,6 +27,7 @@ func (executor *SyncTaskExecutor) Start(server Server) (bool, error) {
 }
 
 func (executor *SyncTaskExecutor) SubmitTask(task Task) (bool, error) {
+	log.Printf("SubmitTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
 	if _, ok := executor.completedTasks[task.TaskId]; ok {
 		log.Printf("Task ID: %d already completed.\n", task.TaskId)
 		return false, errors.New("task already completed")
@@ -36,11 +37,13 @@ func (executor *SyncTaskExecutor) SubmitTask(task Task) (bool, error) {
 }
 
 func (executor *SyncTaskExecutor) scheduleTask(task Task) (bool, error) {
+	log.Printf("ScheduleTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
 	executor.taskQueue = append(executor.taskQueue, task)
 	return true, nil
 }
 
 func (executor *SyncTaskExecutor) processTasks() {
+	log.Println("ProcessTasks triggered at", time.Now().Format(time.RFC3339))
 	for {
 		select {
 		case <-executor.stopChan:
@@ -48,12 +51,12 @@ func (executor *SyncTaskExecutor) processTasks() {
 			return
 		default:
 			if len(executor.taskQueue) > 0 {
-				task, _ := executor.popTask()
-				if success, err := executor.executeTask(task); success && err == nil {
-					executor.completeTask(task)
-				} else if task.RetryCount < executor.failureThreshold {
-					executor.retryTask(task)
+				task, err := executor.popTask()
+				if err != nil {
+					log.Println("Error popping task:", err)
+					continue
 				}
+				executor.executeTask(task)
 			} else {
 				// No tasks available, sleep briefly before checking again
 				time.Sleep(100 * time.Millisecond)
@@ -63,6 +66,7 @@ func (executor *SyncTaskExecutor) processTasks() {
 }
 
 func (executor *SyncTaskExecutor) popTask() (Task, error) {
+	log.Println("PopTask triggered at", time.Now().Format(time.RFC3339))
 	if len(executor.taskQueue) == 0 {
 		return Task{}, errors.New("no tasks in queue")
 	}
@@ -92,6 +96,7 @@ func (executor *SyncTaskExecutor) executeTask(task Task) (bool, error) {
 }
 
 func (executor *SyncTaskExecutor) completeTask(task Task) (bool, error) {
+	log.Printf("CompleteTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
 	executor.completedTasks[task.TaskId] = struct{}{}
 	log.Printf("Task ID: %d completed.\n", task.TaskId)
 

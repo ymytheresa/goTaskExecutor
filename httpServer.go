@@ -58,6 +58,7 @@ func initConfig(mode string, number string) (ServerConfig, error) {
 func processHttpRequests(server Server) {
 	http.HandleFunc("/task", func(w http.ResponseWriter, r *http.Request) {
 		taskHandler(w, r, server)
+		fmt.Println("here")
 	})
 
 	port := "8080"
@@ -105,9 +106,9 @@ func taskHandler(w http.ResponseWriter, r *http.Request, server Server) {
 
 	if result {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "Task %d completed successfully", taskID)
+		fmt.Fprintf(w, "Task %d completed successfully\n", taskID)
 	} else {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Task %d failed", taskID)
+		fmt.Fprintf(w, "Task %d failed\n", taskID)
 	}
 }
