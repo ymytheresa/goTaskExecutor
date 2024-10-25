@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"sync"
 )
 
 func startHttpServer() {
@@ -19,19 +18,20 @@ func startHttpServer() {
 	mode := os.Args[1]
 	number := os.Args[2]
 
-	serverConfig := initConfig(mode, number)
+	serverConfig, err := initConfig(mode, number)
+	if err != nil {
+		log.Fatal(err)
+	}
 	var executor TaskExecutor
 	if serverConfig.Mode == "async" {
-		executor = &AsyncTaskExecutor{
-			TaskChan:       make(chan Task),
-			CompletedTasks: make(map[int]struct{}),
-			WaitGroup:      &sync.WaitGroup{},
-			Mu:             &sync.RWMutex{},
-		}
+		return
 	} else if serverConfig.Mode == "sync" {
 		executor = &SyncTaskExecutor{
-			TaskQueue:      make(map[int]struct{}),
-			CompletedTasks: make(map[int]struct{}),
+			taskQueue:        make([]Task, 0),
+			completedTasks:   make(map[int]struct{}),
+			failureThreshold: serverConfig.FailureThreshold,
+			stopChan:         make(chan struct{}),
+			retryCount:       3,
 		}
 	}
 
@@ -40,20 +40,19 @@ func startHttpServer() {
 		TaskExecutor: executor,
 	}
 
-	server.TaskExecutor.Start() // Start the executor
+	server.TaskExecutor.Start(server)
 	processHttpRequests(server)
 }
 
-func initConfig(mode string, number string) ServerConfig {
+func initConfig(mode string, number string) (ServerConfig, error) {
 	threshold, err := strconv.Atoi(number)
 	if err != nil {
-		fmt.Printf("Invalid failure threshold '%s': %v\n", number, err)
-		os.Exit(1)
+		return ServerConfig{}, fmt.Errorf("invalid failure threshold '%s': %v", number, err)
 	}
 	return ServerConfig{
 		Mode:             mode,
 		FailureThreshold: threshold,
-	}
+	}, nil
 }
 
 func processHttpRequests(server Server) {
@@ -90,10 +89,10 @@ func taskHandler(w http.ResponseWriter, r *http.Request, server Server) {
 	}
 
 	task := Task{
-		TaskId:      taskID,
-		RetryCount:  0,
-		Completed:   false,
-		FailureRate: 0,
+		TaskId:     taskID,
+		RetryCount: 0,
+		Completed:  false,
+		ResultChan: make(chan bool),
 	}
 
 	if _, err := server.TaskExecutor.SubmitTask(task); err != nil {
@@ -101,6 +100,14 @@ func taskHandler(w http.ResponseWriter, r *http.Request, server Server) {
 		return
 	}
 
-	w.WriteHeader(http.StatusAccepted)
-	fmt.Fprintf(w, "Task %d accepted for processing", taskID)
+	// Wait for task completion or failure
+	result := <-task.ResultChan
+
+	if result {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "Task %d completed successfully", taskID)
+	} else {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Task %d failed", taskID)
+	}
 }

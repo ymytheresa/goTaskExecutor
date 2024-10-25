@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-// AsyncTaskExecutor struct definition
 type AsyncTaskExecutor struct {
 	WaitGroup      *sync.WaitGroup
 	TaskChan       chan Task
@@ -14,8 +13,7 @@ type AsyncTaskExecutor struct {
 	Mu             *sync.RWMutex
 }
 
-// Start begins executing tasks asynchronously.
-func (executor *AsyncTaskExecutor) Start() (bool, error) {
+func (executor *AsyncTaskExecutor) Start(server Server) (bool, error) {
 	log.Println("Starting task execution...")
 
 	go func() {
