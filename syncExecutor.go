@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"math/rand"
 	"time"
@@ -29,6 +30,7 @@ func (executor *SyncTaskExecutor) Start(server Server) (bool, error) {
 func (executor *SyncTaskExecutor) SubmitTask(task Task) (bool, error) {
 	log.Printf("SubmitTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
 	if _, ok := executor.completedTasks[task.TaskId]; ok {
+		fmt.Println("task already completed")
 		log.Printf("Task ID: %d already completed.\n", task.TaskId)
 		return false, errors.New("task already completed")
 	}
@@ -37,7 +39,6 @@ func (executor *SyncTaskExecutor) SubmitTask(task Task) (bool, error) {
 }
 
 func (executor *SyncTaskExecutor) scheduleTask(task Task) {
-	log.Printf("ScheduleTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
 	executor.taskQueue = append(executor.taskQueue, task)
 	return
 }
@@ -63,13 +64,15 @@ func (executor *SyncTaskExecutor) processTasks() {
 }
 
 func (executor *SyncTaskExecutor) executeTask(task Task) (bool, error) {
-	log.Printf("ExecuteTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
+	gid := getGID()
+	log.Printf("ExecuteTask triggered for Task ID: %d at %s by Goroutine %d\n", task.TaskId, time.Now().Format(time.RFC3339), gid)
+
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	randomValue := r.Float64() * 100
 
 	// Determine if the task execution is successful based on the threshold
 	if randomValue > float64(executor.failureThreshold) {
-		time.Sleep(1 * time.Second)
+		// time.Sleep(1 * time.Second) //todo: remove this
 		executor.completeTask(task)
 		return true, nil
 	} else {

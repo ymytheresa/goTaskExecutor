@@ -103,22 +103,28 @@ func taskHandler(w http.ResponseWriter, r *http.Request, server Server) {
 	}
 
 	if _, err := server.TaskExecutor.SubmitTask(task); err != nil {
-		http.Error(w, "Failed to add task", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		return
 	}
 
 	// Wait for task completion or failure
-	result := <-task.ResultChan
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		result := <-task.ResultChan
 
-	switch result {
-	case 1: // Assuming result is a boolean indicating success
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "Task %d completed successfully\n", taskID)
-	case 2: // Assuming result is false for failure
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Task %d failed\n", taskID)
-	default:
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Task %d returned an unknown result\n", taskID)
-	}
+		switch result {
+		case 1: // Assuming result is a boolean indicating success
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintf(w, "Task %d completed successfully\n", taskID)
+		case 2: // Assuming result is false for failure
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "Task %d failed\n", taskID)
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "Task %d returned an unknown result\n", taskID)
+		}
+		wg.Done()
+	}()
+	wg.Wait()
 }

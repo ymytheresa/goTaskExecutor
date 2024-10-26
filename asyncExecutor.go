@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"math/rand"
 	"runtime"
@@ -32,11 +33,11 @@ func (executor *AsyncTaskExecutor) Start(server Server) (bool, error) {
 
 func (executor *AsyncTaskExecutor) SubmitTask(task Task) (bool, error) {
 	log.Printf("SubmitTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
-
 	executor.mu.RLock()         // Acquire read lock
 	defer executor.mu.RUnlock() // Ensure the lock is released
 
 	if _, ok := executor.completedTasks[task.TaskId]; ok {
+		fmt.Println("task already completed")
 		log.Printf("Task ID: %d already completed.\n", task.TaskId)
 		return false, errors.New("task already completed")
 	}
@@ -74,7 +75,7 @@ func (executor *AsyncTaskExecutor) executeTask(task Task) (bool, error) {
 	// Determine if the task execution is successful based on the threshold
 	if randomValue > float64(executor.failureThreshold) {
 		go func() {
-			time.Sleep(1 * time.Second)
+			// time.Sleep(1 * time.Second) //todo: remove this
 			executor.completeTask(task)
 		}()
 		return true, nil

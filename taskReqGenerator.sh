@@ -2,9 +2,9 @@
 
 url="http://localhost:8080/task"
 
-total_requests=1000
+total_requests=100
 
-output_file="responses.txt"
+output_file="responses_$(date +"%Y%m%d_%H%M%S").txt"
 
 send_request() {
   local request_id=$1
@@ -20,10 +20,11 @@ send_request() {
     -H "Content-Type: application/json" \
     -d "$request_payload")
 
-  http_code=$(echo "$response" | tail -n1)
+    http_code=$(echo "$response" | tail -n1)
+    response_body=$(echo "$response" | sed '$d')
 
-  echo "[$timestamp] Request ID $request_id: $response" | tee -a "$output_file"
-  #TODO: improve the output format
+    echo "[$timestamp] | HTTP Status: $http_code | Request ID: $request_id | Response : $response_body" | tee -a "$output_file"
+    
 }
 
 for i in $(seq 1 "$total_requests"); do
