@@ -154,6 +154,6 @@ func TestExecuteTask_RetryScenario(t *testing.T) {
 	}
 
 	if success {
-		t.Fatalf("Expected task to fai")
+		t.Fatalf("Expected task to fail")
 	}
 }

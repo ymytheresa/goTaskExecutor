@@ -4,6 +4,9 @@ import (
 	"errors"
 	"log"
 	"math/rand"
+	"runtime"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -62,14 +65,16 @@ func (executor *AsyncTaskExecutor) processTasks() {
 }
 
 func (executor *AsyncTaskExecutor) executeTask(task Task) (bool, error) {
-	log.Printf("ExecuteTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
+	gid := getGID()
+	log.Printf("ExecuteTask triggered for Task ID: %d at %s by Goroutine %d\n", task.TaskId, time.Now().Format(time.RFC3339), gid)
+
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	randomValue := r.Float64() * 100
 
 	// Determine if the task execution is successful based on the threshold
 	if randomValue > float64(executor.failureThreshold) {
 		go func() {
-			time.Sleep(10 * time.Second)
+			time.Sleep(1 * time.Second)
 			executor.completeTask(task)
 		}()
 		return true, nil
@@ -90,9 +95,7 @@ func (executor *AsyncTaskExecutor) completeTask(task Task) (bool, error) {
 	executor.completedTasks[task.TaskId] = struct{}{}
 	log.Printf("CompleteTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
 
-	if task.ResultChan != nil {
-		task.ResultChan <- 1
-	}
+	task.ResultChan <- 1
 	return true, nil
 }
 
@@ -104,8 +107,21 @@ func (executor *AsyncTaskExecutor) retryTask(task Task) (bool, error) {
 func (executor *AsyncTaskExecutor) failTask(task Task) (bool, error) {
 	log.Printf("Task ID: %d failed.\n", task.TaskId)
 
-	if task.ResultChan != nil {
-		task.ResultChan <- 2
-	}
+	task.ResultChan <- 2
 	return true, nil
+}
+
+func getGID() uint64 {
+	var buf [64]byte
+	n := runtime.Stack(buf[:], false)
+	stack := strings.TrimPrefix(string(buf[:n]), "goroutine ")
+	i := strings.Index(stack, " ")
+	if i < 0 {
+		return 0
+	}
+	id, err := strconv.ParseUint(stack[:i], 10, 64)
+	if err != nil {
+		return 0
+	}
+	return id
 }

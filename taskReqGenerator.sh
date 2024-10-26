@@ -2,7 +2,7 @@
 
 url="http://localhost:8080/task"
 
-total_requests=100
+total_requests=1000
 
 output_file="responses.txt"
 

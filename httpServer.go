@@ -66,7 +66,6 @@ func initConfig(mode string, number string) (ServerConfig, error) {
 func processHttpRequests(server Server) {
 	http.HandleFunc("/task", func(w http.ResponseWriter, r *http.Request) {
 		taskHandler(w, r, server)
-		fmt.Println("here")
 	})
 
 	port := "8080"
