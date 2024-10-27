@@ -2,7 +2,7 @@
 
 url="http://localhost:8080/task"
 
-total_requests=100
+total_requests=200
 
 output_file="responses_$(date +"%Y%m%d_%H%M%S").txt"
 
@@ -37,9 +37,8 @@ echo "$(date +"%Y-%m-%d %H:%M:%S") $total_requests tasks submitted." | tee -a "$
 
 echo "Analyzing results..." | tee -a "$output_file"
 
-# Parse the output file to find completed and failed tasks
-completed_tasks=$(grep -o "task completed" "$output_file" | wc -l)
-failed_tasks=$(grep -o "task failed" "$output_file" | wc -l)
+completed_tasks=$(grep -o "completed successfully" "$output_file" | wc -l)
+failed_tasks=$(grep -o "failed" "$output_file" | wc -l)
 already_completed=$(grep -o "task already completed" "$output_file" | wc -l)
 
 echo "Summary:" | tee -a "$output_file"
