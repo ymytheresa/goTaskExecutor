@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -52,14 +53,13 @@ func printDB() {
 }
 
 func addTaskToDB(taskID int) error {
-	fmt.Printf("Adding to db task ID: %d to completedTasks\n", taskID)
+	log.Printf("Persist to DB Task ID: %d at %s\n", taskID, time.Now().Format(time.RFC3339))
+
 	_, err := server.DB.Exec("INSERT INTO completedTasks (task_id) VALUES (?)", taskID)
 	return err
 }
 
 func ifTaskCompleted(taskID int) bool {
-	fmt.Printf("Checking if task ID: %d is completed in db\n", taskID)
-	printDB()
 	var count int
 	err := server.DB.QueryRow("SELECT COUNT(*) FROM completedTasks WHERE task_id = ?", taskID).Scan(&count)
 	if err != nil {

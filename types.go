@@ -29,10 +29,3 @@ type TaskExecutor interface {
 	retryTask(task Task) (bool, error)
 	failTask(task Task) (bool, error)
 }
-
-type Database interface {
-	startDB() (*sql.DB, error)
-	printDB()
-	addTaskToDB(taskID int) error
-	ifTaskCompleted(taskID int) bool
-}

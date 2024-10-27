@@ -58,7 +58,6 @@ func (executor *AsyncTaskExecutor) processTasks() {
 		var task Task
 		select {
 		case task = <-executor.taskQueue:
-			log.Println("ProcessTasks triggered at", time.Now().Format(time.RFC3339))
 			go executor.executeTask(task)
 		default:
 			time.Sleep(10 * time.Millisecond)
