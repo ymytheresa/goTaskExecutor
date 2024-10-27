@@ -1,0 +1,1 @@
+<!- include how to install sqllite with mac -->

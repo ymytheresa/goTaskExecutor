@@ -26,7 +26,3 @@ type TaskExecutor interface {
 	retryTask(task Task) (bool, error)
 	failTask(task Task) (bool, error)
 }
-
-type todoTask interface {
-	Do()
-}

@@ -33,8 +33,8 @@ func (executor *AsyncTaskExecutor) Start(server Server) (bool, error) {
 
 func (executor *AsyncTaskExecutor) SubmitTask(task Task) (bool, error) {
 	log.Printf("SubmitTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
-	executor.mu.RLock()         // Acquire read lock
-	defer executor.mu.RUnlock() // Ensure the lock is released
+	executor.mu.RLock()
+	defer executor.mu.RUnlock()
 
 	if _, ok := executor.completedTasks[task.TaskId]; ok {
 		fmt.Println("task already completed")
