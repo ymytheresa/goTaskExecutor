@@ -1,5 +1,7 @@
 package main
 
+import "database/sql"
+
 type ServerConfig struct {
 	Mode             string
 	FailureThreshold int
@@ -8,6 +10,7 @@ type ServerConfig struct {
 type Server struct {
 	Config       ServerConfig
 	TaskExecutor TaskExecutor
+	DB           *sql.DB
 }
 
 type Task struct {
@@ -17,7 +20,7 @@ type Task struct {
 }
 
 type TaskExecutor interface {
-	Start(serverConfig ServerConfig) (bool, error)
+	Start(server Server) (bool, error)
 	SubmitTask(task Task) (bool, error)
 	scheduleTask(task Task)
 	processTasks()

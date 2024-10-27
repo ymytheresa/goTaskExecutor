@@ -43,12 +43,18 @@ func startHttpServer() {
 		}
 	}
 
+	db, err := startDB()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	server := Server{
 		Config:       serverConfig,
 		TaskExecutor: executor,
+		DB:           db,
 	}
-	startDB()
-	server.TaskExecutor.Start(serverConfig)
+
+	server.TaskExecutor.Start(server)
 	processHttpRequests(server)
 }
 

@@ -16,8 +16,8 @@ type SyncTaskExecutor struct {
 	retryCount       int
 }
 
-func (executor *SyncTaskExecutor) Start(serverConfig ServerConfig) (bool, error) {
-	executor.failureThreshold = serverConfig.FailureThreshold
+func (executor *SyncTaskExecutor) Start(server Server) (bool, error) {
+	executor.failureThreshold = server.Config.FailureThreshold
 	executor.completedTasks = make(map[int]struct{})
 	// TODO: Read completed tasks from DB
 
