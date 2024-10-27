@@ -44,7 +44,6 @@ func (executor *SyncTaskExecutor) scheduleTask(task Task) {
 }
 
 func (executor *SyncTaskExecutor) processTasks() {
-	log.Println("ProcessTasks triggered at", time.Now().Format(time.RFC3339))
 	for {
 		select {
 		case <-executor.stopChan:
