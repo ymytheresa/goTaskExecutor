@@ -125,6 +125,7 @@ func taskHandler(w http.ResponseWriter, r *http.Request, server Server) {
 			fmt.Fprintf(w, "Task %d returned an unknown result\n", taskID)
 		}
 		wg.Done()
+		//TODO: close the result channel; might add the thread id but dont think it is necessary
 	}()
 	wg.Wait()
 }
