@@ -66,7 +66,7 @@ This is a Go service that implements both synchronous (single-threaded) and asyn
 
 5. **Database Access**
 
-    Completed tasks are persisted in the SQLite database located at `./tasks.db`. You can inspect the database using any SQLite client:
+    Completed tasks are persisted in the SQLite database located at `./completedTasks.db`. You can inspect the database using any SQLite client:
 
     ```bash
     sqlite3 tasks.db
