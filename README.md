@@ -8,7 +8,7 @@ This is a Go service that implements both synchronous (single-threaded) and asyn
 ![Async Mode Diagram](./assets/async.png)
 - Sync mode: Processes tasks sequentially in a single thread
 ![Sync Mode Diagram](./assets/sync.png)
-- SQLite database for persisting completed tasks
+- SQLite database for persisting completed tasks, index on task_id for faster lookup
 - Configurable failure threshold and retry mechanism at most 3 times
 - HTTP API endpoint for task submission, immediate log indicating task completed / failed / duplicated.
 
