@@ -48,7 +48,7 @@ func startHttpServer() {
 		TaskExecutor: executor,
 	}
 
-	server.TaskExecutor.Start(server)
+	server.TaskExecutor.Start(serverConfig)
 	processHttpRequests(server)
 }
 

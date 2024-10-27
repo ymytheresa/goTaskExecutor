@@ -17,7 +17,7 @@ type Task struct {
 }
 
 type TaskExecutor interface {
-	Start(server Server) (bool, error)
+	Start(serverConfig ServerConfig) (bool, error)
 	SubmitTask(task Task) (bool, error)
 	scheduleTask(task Task)
 	processTasks()
