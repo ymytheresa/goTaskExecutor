@@ -21,8 +21,8 @@ type AsyncTaskExecutor struct {
 	mu               sync.RWMutex
 }
 
-func (executor *AsyncTaskExecutor) Start(server Server) (bool, error) {
-	executor.failureThreshold = server.Config.FailureThreshold
+func (executor *AsyncTaskExecutor) Start(serverConfig ServerConfig) (bool, error) {
+	executor.failureThreshold = serverConfig.FailureThreshold
 	executor.completedTasks = make(map[int]struct{})
 	// TODO: Read completed tasks from DB
 
