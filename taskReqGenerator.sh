@@ -43,10 +43,8 @@ echo "Analyzing results..." | tee -a "$output_file"
 
 completed_tasks=$(grep -o "completed successfully" "$output_file" | wc -l)
 failed_tasks=$(grep -o "Task .* failed" "$output_file" | wc -l)
-already_completed=$(grep -o "task already completed" "$output_file" | wc -l)
-queue_full=$(grep -o "Task .* is not accepted due to queue full" "$output_file" | wc -l)
+already_completed=$(grep -o "already completed" "$output_file" | wc -l)
 echo "Summary:" | tee -a "$output_file"
-echo "Total queue full tasks: $queue_full" | tee -a "$output_file"
 echo "Total completed tasks: $completed_tasks" | tee -a "$output_file"
 echo "Total failed tasks: $failed_tasks" | tee -a "$output_file"
 echo "Total duplicated tasks: $already_completed" | tee -a "$output_file"
