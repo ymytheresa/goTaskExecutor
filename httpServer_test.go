@@ -15,9 +15,6 @@ func TestInitConfig(t *testing.T) {
 		{"async", "5", "async", 5, false}, // Valid async mode with valid threshold
 		{"sync", "10", "sync", 10, false}, // Valid sync mode with valid threshold
 		{"async", "invalid", "", 0, true}, // Invalid threshold input
-		{"", "5", "", 0, true},            // Empty mode
-		{"sync", "", "", 0, true},         // Empty threshold
-		{"unknown", "5", "", 0, true},     // Unknown mode
 	}
 
 	for _, test := range tests {

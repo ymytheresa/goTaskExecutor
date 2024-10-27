@@ -1,17 +1,19 @@
 package main
 
 import (
+	"sync"
 	"testing"
 )
 
-func setSyncExecutor() {
+func setAsyncExecutor() {
 	serverConfig, _ := initConfig("sync", "50")
-	executor := &SyncTaskExecutor{
-		taskQueue:        make([]Task, 0),
+	executor := &AsyncTaskExecutor{
+		taskQueue:        make(chan Task, 100),
 		completedTasks:   make(map[int]struct{}),
 		failureThreshold: serverConfig.FailureThreshold,
-		stopChan:         make(chan struct{}),
 		retryCount:       3,
+		wg:               sync.WaitGroup{},
+		mu:               sync.RWMutex{},
 	}
 	db, _ := startDB()
 	server = Server{
@@ -22,8 +24,8 @@ func setSyncExecutor() {
 	server.TaskExecutor.Start()
 }
 
-func TestSyncSubmitTask(t *testing.T) {
-	setSyncExecutor()
+func TestAsyncSubmitTask(t *testing.T) {
+	setAsyncExecutor()
 	defer clearDB()
 	executor := server.TaskExecutor
 
@@ -35,8 +37,8 @@ func TestSyncSubmitTask(t *testing.T) {
 	}
 }
 
-func TestSyncSubmitTask_AlreadyCompleted(t *testing.T) {
-	setSyncExecutor()
+func TestAsyncSubmitTask_AlreadyCompleted(t *testing.T) {
+	setAsyncExecutor()
 	defer clearDB()
 	executor := server.TaskExecutor
 
@@ -50,8 +52,8 @@ func TestSyncSubmitTask_AlreadyCompleted(t *testing.T) {
 	}
 }
 
-func TestSyncCompleteTask(t *testing.T) {
-	setSyncExecutor()
+func TestAsyncCompleteTask(t *testing.T) {
+	setAsyncExecutor()
 	defer clearDB()
 	executor := server.TaskExecutor
 
@@ -81,8 +83,8 @@ func TestSyncCompleteTask(t *testing.T) {
 	}
 }
 
-func TestSyncFailTask(t *testing.T) {
-	setSyncExecutor()
+func TestAsyncFailTask(t *testing.T) {
+	setAsyncExecutor()
 	defer clearDB()
 	executor := server.TaskExecutor
 

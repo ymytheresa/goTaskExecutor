@@ -59,6 +59,7 @@ func addTaskToDB(taskID int) error {
 
 func ifTaskCompleted(taskID int) bool {
 	fmt.Printf("Checking if task ID: %d is completed in db\n", taskID)
+	printDB()
 	var count int
 	err := server.DB.QueryRow("SELECT COUNT(*) FROM completedTasks WHERE task_id = ?", taskID).Scan(&count)
 	if err != nil {
@@ -82,4 +83,15 @@ func readCompletedTasksFromDB(completedTasks *map[int]struct{}) {
 		}
 		(*completedTasks)[taskID] = struct{}{}
 	}
+}
+
+func clearDB() error {
+	_, err := server.DB.Exec("DELETE FROM completedTasks")
+	return err
+}
+
+func sizeOfDB() int {
+	var count int
+	server.DB.QueryRow("SELECT COUNT(*) FROM completedTasks").Scan(&count)
+	return count
 }
