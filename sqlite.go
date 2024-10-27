@@ -23,7 +23,7 @@ func startDB() (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to create table: %w", err)
 	}
 
-	createIndexSQL := `CREATE INDEX IF NOT EXISTS idx_task_id ON completedTasks(task_id);`
+	createIndexSQL := `CREATE INDEX IF NOT EXISTS idx_task_id ON completedTasks(task_id);` //index on task_id for faster lookup
 	if _, err := db.Exec(createIndexSQL); err != nil {
 		return nil, fmt.Errorf("failed to create index on task_id: %w", err)
 	}

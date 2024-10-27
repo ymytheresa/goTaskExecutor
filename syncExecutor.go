@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -36,9 +35,8 @@ func (executor *SyncTaskExecutor) SubmitTask(task Task) (bool, error) {
 	//check if the task is already completed
 	log.Printf("SubmitTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
 	if ifTaskCompleted(task.TaskId) {
-		fmt.Println("task already completed")
 		log.Printf("Task ID: %d already completed.\n", task.TaskId)
-		return false, errors.New("task already completed")
+		return false, fmt.Errorf("Task ID: %d already completed.", task.TaskId)
 	}
 	executor.scheduleTask(task)
 	return true, nil
@@ -70,7 +68,7 @@ func (executor *SyncTaskExecutor) executeTask(task Task) (bool, error) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	randomValue := r.Float64() * 100
 
-	// Determine if the task execution is successful based on the threshold
+	//determine if the task execution is successful based on the threshold
 	if randomValue > float64(executor.failureThreshold) {
 		time.Sleep(1 * time.Second)
 		executor.completeTask(task)
@@ -91,7 +89,7 @@ func (executor *SyncTaskExecutor) completeTask(task Task) (bool, error) {
 	addTaskToDB(task.TaskId)
 
 	if task.ResultChan != nil {
-		task.ResultChan <- 1
+		task.ResultChan <- 1 //1 indicates success
 	}
 	return true, nil
 }
@@ -105,7 +103,7 @@ func (executor *SyncTaskExecutor) failTask(task Task) (bool, error) {
 	log.Printf("Task ID: %d failed.\n", task.TaskId)
 
 	if task.ResultChan != nil {
-		task.ResultChan <- 2
+		task.ResultChan <- 2 //2 indicates failure
 	}
 	return true, nil
 }

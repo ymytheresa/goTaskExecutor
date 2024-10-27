@@ -16,7 +16,7 @@ type Server struct {
 type Task struct {
 	TaskId     int
 	RetryCount int
-	ResultChan chan int // 1: success, 2: fail, 3: repeated
+	ResultChan chan int // 1: success, 2: fail
 }
 
 type TaskExecutor interface {

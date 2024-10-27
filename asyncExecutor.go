@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -11,6 +10,13 @@ import (
 	"sync"
 	"time"
 )
+
+/*
+Async executor will process tasks concurrently in multiple goroutines.
+Buffered channel is used to queue tasks.
+Map is used to track completed tasks.
+RWMutex is used to synchronize access to the completed tasks map.
+*/
 
 type AsyncTaskExecutor struct {
 	taskQueue        chan Task
@@ -23,10 +29,8 @@ type AsyncTaskExecutor struct {
 
 func (executor *AsyncTaskExecutor) Start() (bool, error) {
 	executor.failureThreshold = server.Config.FailureThreshold
-	executor.completedTasks = make(map[int]struct{})
-	readCompletedTasksFromDB(&executor.completedTasks)
 
-	go executor.processTasks()
+	go executor.processTasks() //start the task processing loop
 
 	return true, nil
 }
@@ -38,18 +42,16 @@ func (executor *AsyncTaskExecutor) SubmitTask(task Task) (bool, error) {
 
 	// if _, ok := executor.completedTasks[task.TaskId]; ok {
 	if ifTaskCompleted(task.TaskId) {
-		fmt.Println("task already completed")
 		log.Printf("Task ID: %d already completed.\n", task.TaskId)
-		return false, errors.New("task already completed")
+		return false, fmt.Errorf("Task ID: %d already completed.", task.TaskId)
 	}
-	go executor.scheduleTask(task)
+	go executor.scheduleTask(task) //concurrently schedule the task
 	return true, nil
 }
 
 func (executor *AsyncTaskExecutor) scheduleTask(task Task) {
 	log.Printf("ScheduleTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
-	executor.taskQueue <- task
-	//TODO: full queue, return 503
+	executor.taskQueue <- task //add task to the buffered channel
 	return
 }
 

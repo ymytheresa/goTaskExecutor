@@ -33,7 +33,7 @@ func startHttpServer() {
 	var executor TaskExecutor
 	if serverConfig.Mode == "async" {
 		executor = &AsyncTaskExecutor{
-			taskQueue:        make(chan Task, 100),
+			taskQueue:        make(chan Task, 100), //buffered channel to queue tasks
 			completedTasks:   make(map[int]struct{}),
 			failureThreshold: serverConfig.FailureThreshold,
 			retryCount:       3,
@@ -143,9 +143,6 @@ func taskHandler(w http.ResponseWriter, r *http.Request) {
 		case 2: // 2 is failure
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintf(w, "Task %d failed\n", taskID)
-		case 3: // 3 is queue full in async mode
-			w.WriteHeader(http.StatusServiceUnavailable)
-			fmt.Fprintf(w, "Task %d is not accepted due to queue full\n", taskID)
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintf(w, "Task %d returned an unknown result\n", taskID)
