@@ -34,3 +34,15 @@ done
 wait
 
 echo "$(date +"%Y-%m-%d %H:%M:%S") $total_requests tasks submitted." | tee -a "$output_file"
+
+echo "Analyzing results..." | tee -a "$output_file"
+
+# Parse the output file to find completed and failed tasks
+completed_tasks=$(grep -o "task completed" "$output_file" | wc -l)
+failed_tasks=$(grep -o "task failed" "$output_file" | wc -l)
+already_completed=$(grep -o "task already completed" "$output_file" | wc -l)
+
+echo "Summary:" | tee -a "$output_file"
+echo "Total completed tasks: $completed_tasks" | tee -a "$output_file"
+echo "Total failed tasks: $failed_tasks" | tee -a "$output_file"
+echo "Total already completed tasks: $already_completed" | tee -a "$output_file"

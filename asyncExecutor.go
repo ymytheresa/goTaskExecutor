@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -11,6 +12,8 @@ import (
 	"sync"
 	"time"
 )
+
+var db *sql.DB
 
 type AsyncTaskExecutor struct {
 	taskQueue        chan Task
@@ -24,7 +27,8 @@ type AsyncTaskExecutor struct {
 func (executor *AsyncTaskExecutor) Start(server Server) (bool, error) {
 	executor.failureThreshold = server.Config.FailureThreshold
 	executor.completedTasks = make(map[int]struct{})
-	// TODO: Read completed tasks from DB
+	db = server.DB
+	readCompletedTasksFromDB(db, &executor.completedTasks)
 
 	go executor.processTasks()
 
@@ -33,10 +37,11 @@ func (executor *AsyncTaskExecutor) Start(server Server) (bool, error) {
 
 func (executor *AsyncTaskExecutor) SubmitTask(task Task) (bool, error) {
 	log.Printf("SubmitTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
-	executor.mu.RLock()
-	defer executor.mu.RUnlock()
+	// executor.mu.RLock()
+	// defer executor.mu.RUnlock()
 
-	if _, ok := executor.completedTasks[task.TaskId]; ok {
+	// if _, ok := executor.completedTasks[task.TaskId]; ok {
+	if ifTaskCompleted(db, task.TaskId) {
 		fmt.Println("task already completed")
 		log.Printf("Task ID: %d already completed.\n", task.TaskId)
 		return false, errors.New("task already completed")
@@ -91,9 +96,10 @@ func (executor *AsyncTaskExecutor) executeTask(task Task) (bool, error) {
 }
 
 func (executor *AsyncTaskExecutor) completeTask(task Task) (bool, error) {
-	executor.mu.Lock()         // Acquire write lock
-	defer executor.mu.Unlock() // Ensure the lock is released
-	executor.completedTasks[task.TaskId] = struct{}{}
+	// executor.mu.Lock()         // Acquire write lock
+	// defer executor.mu.Unlock() // Ensure the lock is released
+	// executor.completedTasks[task.TaskId] = struct{}{}
+	addTaskToDB(db, task.TaskId)
 	log.Printf("CompleteTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
 
 	task.ResultChan <- 1

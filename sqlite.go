@@ -14,8 +14,6 @@ func startDB() (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	defer db.Close()
-
 	createTableSQL := `CREATE TABLE IF NOT EXISTS completedTasks (
 		id INTEGER PRIMARY KEY,
 		task_id INTEGER NOT NULL
@@ -56,12 +54,34 @@ func printDB(db *sql.DB) {
 }
 
 func addTaskToDB(db *sql.DB, taskID int) error {
+	fmt.Printf("Adding to db task ID: %d to completedTasks\n", taskID)
 	_, err := db.Exec("INSERT INTO completedTasks (task_id) VALUES (?)", taskID)
 	return err
 }
 
-func ifTaskCompleted(db *sql.DB, taskID int) (bool, error) {
+func ifTaskCompleted(db *sql.DB, taskID int) bool {
+	fmt.Printf("Checking if task ID: %d is completed in db\n", taskID)
 	var count int
 	err := db.QueryRow("SELECT COUNT(*) FROM completedTasks WHERE task_id = ?", taskID).Scan(&count)
-	return count > 0, err
+	if err != nil {
+		log.Printf("Failed to check if task is completed: %v", err)
+		return false
+	}
+	return count > 0
+}
+
+func readCompletedTasksFromDB(db *sql.DB, completedTasks *map[int]struct{}) {
+	rows, err := db.Query("SELECT task_id FROM completedTasks")
+	if err != nil {
+		log.Fatalf("Failed to query completedTasks: %v", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var taskID int
+		if err := rows.Scan(&taskID); err != nil {
+			log.Printf("Failed to scan row: %v", err)
+		}
+		(*completedTasks)[taskID] = struct{}{}
+	}
 }
