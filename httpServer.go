@@ -10,6 +10,11 @@ import (
 	"sync"
 )
 
+/*
+Start of server is expected to receive async/sync mode , and the failure threshold.
+The server will start the corresponding task executor, database, and keep processing http requests.
+*/
+
 var server Server
 
 func startHttpServer() {
@@ -84,6 +89,16 @@ func processHttpRequests() {
 }
 
 func taskHandler(w http.ResponseWriter, r *http.Request) {
+	/*
+		Upon receiving a task request, the server will:
+		1. Validate the request method
+		2. Parse the request body to get the task ID
+		3. Initialize a task struct with the task ID and a result channel
+		4. Submit the task to the corresponding task executor
+		5. Wait for the task completion or failure
+		6. Send the response back to the client
+	*/
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
@@ -115,7 +130,6 @@ func taskHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Wait for task completion or failure
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
@@ -137,7 +151,6 @@ func taskHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "Task %d returned an unknown result\n", taskID)
 		}
 		wg.Done()
-		//TODO: close the result channel; might add the thread id but dont think it is necessary
 	}()
 	wg.Wait()
 }

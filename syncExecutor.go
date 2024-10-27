@@ -8,6 +8,13 @@ import (
 	"time"
 )
 
+/*
+Sync executor will process tasks sequentially in a single thread.
+Slice is used to queue tasks.
+SQLite is used to persist completed tasks.
+stopChan is used to signal the 'processTasks' loop to allocate new task to be executed.
+*/
+
 type SyncTaskExecutor struct {
 	taskQueue        []Task
 	completedTasks   map[int]struct{} //replaced by db. leave here for showing original implementation
@@ -18,16 +25,15 @@ type SyncTaskExecutor struct {
 
 func (executor *SyncTaskExecutor) Start() (bool, error) {
 	executor.failureThreshold = server.Config.FailureThreshold
-	executor.completedTasks = make(map[int]struct{})
-	readCompletedTasksFromDB(&executor.completedTasks)
 
 	executor.stopChan = make(chan struct{})
-	go executor.processTasks()
+	go executor.processTasks() //start the task processing loop
 
 	return true, nil
 }
 
 func (executor *SyncTaskExecutor) SubmitTask(task Task) (bool, error) {
+	//check if the task is already completed
 	log.Printf("SubmitTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
 	if ifTaskCompleted(task.TaskId) {
 		fmt.Println("task already completed")
@@ -39,6 +45,7 @@ func (executor *SyncTaskExecutor) SubmitTask(task Task) (bool, error) {
 }
 
 func (executor *SyncTaskExecutor) scheduleTask(task Task) {
+	//add task to the "todo queue"
 	executor.taskQueue = append(executor.taskQueue, task)
 	return
 }
@@ -47,16 +54,11 @@ func (executor *SyncTaskExecutor) processTasks() {
 	for {
 		select {
 		case <-executor.stopChan:
-			log.Println("Task processing stopped.")
-			return
+			task := executor.taskQueue[0]
+			executor.taskQueue = executor.taskQueue[1:]
+			executor.executeTask(task)
 		default:
-			if len(executor.taskQueue) > 0 {
-				task := executor.taskQueue[0]
-				executor.taskQueue = executor.taskQueue[1:]
-				executor.executeTask(task)
-			} else {
-				time.Sleep(100 * time.Millisecond)
-			}
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }
