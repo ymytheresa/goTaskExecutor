@@ -1,5 +1,7 @@
 package main
 
+import "github.com/ymytheresa/goTaskExecutor/service"
+
 func main() {
-	startHttpServer()
+	service.StartHttpServer()
 }
