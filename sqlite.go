@@ -26,13 +26,11 @@ func startDB() (*sql.DB, error) {
 	if _, err := db.Exec(createIndexSQL); err != nil {
 		return nil, fmt.Errorf("failed to create index on task_id: %w", err)
 	}
-
-	printDB(db)
 	return db, nil
 }
 
-func printDB(db *sql.DB) {
-	rows, err := db.Query("SELECT id, task_id FROM completedTasks")
+func printDB() {
+	rows, err := server.DB.Query("SELECT id, task_id FROM completedTasks")
 	if err != nil {
 		log.Fatalf("Failed to query completedTasks: %v", err)
 	}
@@ -53,16 +51,16 @@ func printDB(db *sql.DB) {
 	}
 }
 
-func addTaskToDB(db *sql.DB, taskID int) error {
+func addTaskToDB(taskID int) error {
 	fmt.Printf("Adding to db task ID: %d to completedTasks\n", taskID)
-	_, err := db.Exec("INSERT INTO completedTasks (task_id) VALUES (?)", taskID)
+	_, err := server.DB.Exec("INSERT INTO completedTasks (task_id) VALUES (?)", taskID)
 	return err
 }
 
-func ifTaskCompleted(db *sql.DB, taskID int) bool {
+func ifTaskCompleted(taskID int) bool {
 	fmt.Printf("Checking if task ID: %d is completed in db\n", taskID)
 	var count int
-	err := db.QueryRow("SELECT COUNT(*) FROM completedTasks WHERE task_id = ?", taskID).Scan(&count)
+	err := server.DB.QueryRow("SELECT COUNT(*) FROM completedTasks WHERE task_id = ?", taskID).Scan(&count)
 	if err != nil {
 		log.Printf("Failed to check if task is completed: %v", err)
 		return false
@@ -70,8 +68,8 @@ func ifTaskCompleted(db *sql.DB, taskID int) bool {
 	return count > 0
 }
 
-func readCompletedTasksFromDB(db *sql.DB, completedTasks *map[int]struct{}) {
-	rows, err := db.Query("SELECT task_id FROM completedTasks")
+func readCompletedTasksFromDB(completedTasks *map[int]struct{}) {
+	rows, err := server.DB.Query("SELECT task_id FROM completedTasks")
 	if err != nil {
 		log.Fatalf("Failed to query completedTasks: %v", err)
 	}

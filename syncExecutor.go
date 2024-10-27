@@ -10,16 +10,16 @@ import (
 
 type SyncTaskExecutor struct {
 	taskQueue        []Task
-	completedTasks   map[int]struct{}
+	completedTasks   map[int]struct{} //replaced by db. leave here for showing original implementation
 	failureThreshold int
 	stopChan         chan struct{}
 	retryCount       int
 }
 
-func (executor *SyncTaskExecutor) Start(server Server) (bool, error) {
+func (executor *SyncTaskExecutor) Start() (bool, error) {
 	executor.failureThreshold = server.Config.FailureThreshold
 	executor.completedTasks = make(map[int]struct{})
-	// TODO: Read completed tasks from DB
+	readCompletedTasksFromDB(&executor.completedTasks)
 
 	executor.stopChan = make(chan struct{})
 	go executor.processTasks()
@@ -29,7 +29,7 @@ func (executor *SyncTaskExecutor) Start(server Server) (bool, error) {
 
 func (executor *SyncTaskExecutor) SubmitTask(task Task) (bool, error) {
 	log.Printf("SubmitTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
-	if _, ok := executor.completedTasks[task.TaskId]; ok {
+	if ifTaskCompleted(task.TaskId) {
 		fmt.Println("task already completed")
 		log.Printf("Task ID: %d already completed.\n", task.TaskId)
 		return false, errors.New("task already completed")
@@ -55,7 +55,6 @@ func (executor *SyncTaskExecutor) processTasks() {
 				executor.taskQueue = executor.taskQueue[1:]
 				executor.executeTask(task)
 			} else {
-				// No tasks available, sleep briefly before checking again
 				time.Sleep(100 * time.Millisecond)
 			}
 		}
@@ -71,7 +70,7 @@ func (executor *SyncTaskExecutor) executeTask(task Task) (bool, error) {
 
 	// Determine if the task execution is successful based on the threshold
 	if randomValue > float64(executor.failureThreshold) {
-		// time.Sleep(1 * time.Second) //todo: remove this
+		time.Sleep(1 * time.Second)
 		executor.completeTask(task)
 		return true, nil
 	} else {
@@ -87,7 +86,7 @@ func (executor *SyncTaskExecutor) executeTask(task Task) (bool, error) {
 
 func (executor *SyncTaskExecutor) completeTask(task Task) (bool, error) {
 	log.Printf("CompleteTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
-	executor.completedTasks[task.TaskId] = struct{}{}
+	addTaskToDB(task.TaskId)
 
 	if task.ResultChan != nil {
 		task.ResultChan <- 1

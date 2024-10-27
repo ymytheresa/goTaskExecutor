@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -13,22 +12,19 @@ import (
 	"time"
 )
 
-var db *sql.DB
-
 type AsyncTaskExecutor struct {
 	taskQueue        chan Task
-	completedTasks   map[int]struct{} //will be accessed by multiple goroutines, RWMutex is used to synchronize access
+	completedTasks   map[int]struct{} //replace by db. leave here for showing original implementation : will be accessed by multiple goroutines, RWMutex is used to synchronize access
 	failureThreshold int
 	retryCount       int
 	wg               sync.WaitGroup
 	mu               sync.RWMutex
 }
 
-func (executor *AsyncTaskExecutor) Start(server Server) (bool, error) {
+func (executor *AsyncTaskExecutor) Start() (bool, error) {
 	executor.failureThreshold = server.Config.FailureThreshold
 	executor.completedTasks = make(map[int]struct{})
-	db = server.DB
-	readCompletedTasksFromDB(db, &executor.completedTasks)
+	readCompletedTasksFromDB(&executor.completedTasks)
 
 	go executor.processTasks()
 
@@ -41,7 +37,7 @@ func (executor *AsyncTaskExecutor) SubmitTask(task Task) (bool, error) {
 	// defer executor.mu.RUnlock()
 
 	// if _, ok := executor.completedTasks[task.TaskId]; ok {
-	if ifTaskCompleted(db, task.TaskId) {
+	if ifTaskCompleted(task.TaskId) {
 		fmt.Println("task already completed")
 		log.Printf("Task ID: %d already completed.\n", task.TaskId)
 		return false, errors.New("task already completed")
@@ -80,7 +76,7 @@ func (executor *AsyncTaskExecutor) executeTask(task Task) (bool, error) {
 	// Determine if the task execution is successful based on the threshold
 	if randomValue > float64(executor.failureThreshold) {
 		go func() {
-			// time.Sleep(1 * time.Second) //todo: remove this
+			time.Sleep(1 * time.Second)
 			executor.completeTask(task)
 		}()
 		return true, nil
@@ -99,7 +95,7 @@ func (executor *AsyncTaskExecutor) completeTask(task Task) (bool, error) {
 	// executor.mu.Lock()         // Acquire write lock
 	// defer executor.mu.Unlock() // Ensure the lock is released
 	// executor.completedTasks[task.TaskId] = struct{}{}
-	addTaskToDB(db, task.TaskId)
+	addTaskToDB(task.TaskId)
 	log.Printf("CompleteTask triggered for Task ID: %d at %s\n", task.TaskId, time.Now().Format(time.RFC3339))
 
 	task.ResultChan <- 1

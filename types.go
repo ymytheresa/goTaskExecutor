@@ -20,7 +20,7 @@ type Task struct {
 }
 
 type TaskExecutor interface {
-	Start(server Server) (bool, error)
+	Start() (bool, error)
 	SubmitTask(task Task) (bool, error)
 	scheduleTask(task Task)
 	processTasks()
@@ -28,4 +28,11 @@ type TaskExecutor interface {
 	completeTask(task Task) (bool, error)
 	retryTask(task Task) (bool, error)
 	failTask(task Task) (bool, error)
+}
+
+type Database interface {
+	startDB() (*sql.DB, error)
+	printDB()
+	addTaskToDB(taskID int) error
+	ifTaskCompleted(taskID int) bool
 }

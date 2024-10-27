@@ -10,6 +10,8 @@ import (
 	"sync"
 )
 
+var server Server
+
 func startHttpServer() {
 	if len(os.Args) < 3 {
 		fmt.Println("Usage: ./program <async/sync> <failure threshold>")
@@ -48,14 +50,14 @@ func startHttpServer() {
 		log.Fatal(err)
 	}
 
-	server := Server{
+	server = Server{
 		Config:       serverConfig,
 		TaskExecutor: executor,
 		DB:           db,
 	}
 
-	server.TaskExecutor.Start(server)
-	processHttpRequests(server)
+	server.TaskExecutor.Start()
+	processHttpRequests()
 }
 
 func initConfig(mode string, number string) (ServerConfig, error) {
@@ -69,9 +71,9 @@ func initConfig(mode string, number string) (ServerConfig, error) {
 	}, nil
 }
 
-func processHttpRequests(server Server) {
+func processHttpRequests() {
 	http.HandleFunc("/task", func(w http.ResponseWriter, r *http.Request) {
-		taskHandler(w, r, server)
+		taskHandler(w, r)
 	})
 
 	port := "8080"
@@ -81,7 +83,7 @@ func processHttpRequests(server Server) {
 	}
 }
 
-func taskHandler(w http.ResponseWriter, r *http.Request, server Server) {
+func taskHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
@@ -118,14 +120,18 @@ func taskHandler(w http.ResponseWriter, r *http.Request, server Server) {
 	wg.Add(1)
 	go func() {
 		result := <-task.ResultChan
+		defer close(task.ResultChan)
 
 		switch result {
-		case 1: // Assuming result is a boolean indicating success
+		case 1: // 1 is success
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprintf(w, "Task %d completed successfully\n", taskID)
-		case 2: // Assuming result is false for failure
+		case 2: // 2 is failure
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintf(w, "Task %d failed\n", taskID)
+		case 3: // 3 is queue full in async mode
+			w.WriteHeader(http.StatusServiceUnavailable)
+			fmt.Fprintf(w, "Task %d is not accepted due to queue full\n", taskID)
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintf(w, "Task %d returned an unknown result\n", taskID)
