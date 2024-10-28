@@ -44,7 +44,9 @@ func (executor *SyncTaskExecutor) SubmitTask(task Task) (bool, error) {
 
 func (executor *SyncTaskExecutor) scheduleTask(task Task) {
 	//add task to the "todo queue"
+	fmt.Println("scheduleTask triggered for Task ID: ", task.TaskId)
 	executor.taskQueue = append(executor.taskQueue, task)
+	executor.stopChan <- struct{}{}
 	return
 }
 
